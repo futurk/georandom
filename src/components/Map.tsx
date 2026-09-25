@@ -183,6 +183,9 @@ const Map: React.FC<MapProps> = ({
       ? getDistanceInKm(centerLat, centerLng, randomLat, randomLng)
       : null;
 
+  const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY;
+  const apiKeyQuery = cartoApiKey ? `?key=${cartoApiKey}` : "";
+
   return (
     <MapContainer
       center={[initialLat, initialLng]}
@@ -194,8 +197,8 @@ const Map: React.FC<MapProps> = ({
       <TileLayer
         url={
           isDarkMode
-            ? "https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png"
-            : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+            ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${apiKeyQuery}`
+            : `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${apiKeyQuery}`
         }
         attribution='&copy; <a href="https://carto.com/attributions">CARTO</a> contributors'
       />
