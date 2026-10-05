@@ -3,37 +3,43 @@ export interface LatLng {
   lng: number;
 }
 
+// Calculate a new LatLng by offsetting a coordinate by dx and dy kilometers
+export const offsetCoordinates = (
+  lat: number,
+  lng: number,
+  dxKm: number,
+  dyKm: number
+): LatLng => {
+  const dLat = dyKm / 111;
+  const dLng = dxKm / (111 * Math.cos(lat * (Math.PI / 180)));
+  return {
+    lat: lat + dLat,
+    lng: lng + dLng,
+  };
+};
+
 // Utility function to calculate a random point within a minimum and maximum radius (annulus ring area)
 export const getRandomLocation = (
   lat: number,
   lng: number,
   minRadius: number,
   maxRadius: number
-) => {
+): LatLng => {
   const minR = Math.max(0, Math.min(minRadius, maxRadius));
   const maxR = Math.max(minR, Math.max(minRadius, maxRadius));
-
-  const minDegree = minR / 111; // Convert to degrees (approx 1 degree is ~111km)
-  const maxDegree = maxR / 111;
 
   const u = Math.random();
   const v = Math.random();
 
-  // Uniform area sample between minR^2 and maxR^2
-  const w = Math.sqrt(u * (maxDegree * maxDegree - minDegree * minDegree) + minDegree * minDegree);
-  const t = 2 * Math.PI * v;
+  // Uniform area sample between minR^2 and maxR^2 in km
+  const rKm = Math.sqrt(u * (maxR * maxR - minR * minR) + minR * minR);
+  const theta = 2 * Math.PI * v;
 
-  // Adjust x and y distances based on the random angle
-  const x = w * Math.cos(t);
-  const y = w * Math.sin(t);
+  // Offset in kilometers
+  const dxKm = rKm * Math.cos(theta);
+  const dyKm = rKm * Math.sin(theta);
 
-  // Calculate the new latitude
-  const newLat = lat + y;
-
-  // Calculate the new longitude, adjusting for shrinking east-west distances near poles
-  const newLng = lng + x / Math.cos(lat * (Math.PI / 180));
-
-  return { lat: newLat, lng: newLng };
+  return offsetCoordinates(lat, lng, dxKm, dyKm);
 };
 
 // Calculate Haversine distance between two sets of coordinates in kilometers
@@ -118,12 +124,7 @@ export const generateRandomRoute = (
     for (const pt of rawPoints) {
       const xKm = pt.x * scale;
       const yKm = pt.y * scale;
-      const dLat = yKm / 111;
-      const dLng = xKm / (111 * Math.cos(centerLat * (Math.PI / 180)));
-      waypoints.push({
-        lat: centerLat + dLat,
-        lng: centerLng + dLng,
-      });
+      waypoints.push(offsetCoordinates(centerLat, centerLng, xKm, yKm));
     }
   } else {
     // For a one-way trip: Center -> W1 -> W2 ... -> W_N (Max-Entropy open polyline)
@@ -151,20 +152,13 @@ export const generateRandomRoute = (
 
     const scale = currentDist > 0 ? targetDistance / currentDist : 1;
 
-    let currLat = centerLat;
-    let currLng = centerLng;
+    let currLocation: LatLng = { lat: centerLat, lng: centerLng };
 
     for (const off of rawOffsets) {
       const xKm = off.dx * scale;
       const yKm = off.dy * scale;
-      const dLat = yKm / 111;
-      const dLng = xKm / (111 * Math.cos(currLat * (Math.PI / 180)));
-      currLat += dLat;
-      currLng += dLng;
-      waypoints.push({
-        lat: currLat,
-        lng: currLng,
-      });
+      currLocation = offsetCoordinates(currLocation.lat, currLocation.lng, xKm, yKm);
+      waypoints.push(currLocation);
     }
   }
 
